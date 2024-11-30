@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { Redirect, Tabs } from 'expo-router'
 import React from 'react'
 import { Platform, Text } from 'react-native'
-import { useSession } from '../../auth/ctx'
+import { useSession } from '../../lib/authCtx'
 
 export default function TabLayout() {
   const { session, isLoading } = useSession()

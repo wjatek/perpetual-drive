@@ -1,4 +1,4 @@
-import { useSession } from '@/auth/ctx'
+import { useSession } from '@/lib/authCtx'
 import { Button, StyleSheet, Text, View } from 'react-native'
 
 export default function StorageScreen() {

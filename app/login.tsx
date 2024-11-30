@@ -1,4 +1,4 @@
-import { useSession } from '@/auth/ctx';
+import { useSession } from '@/lib/authCtx';
 import { useRouter } from 'expo-router'
 import React from 'react'
 import { Button, StyleSheet, Text, View } from 'react-native'
