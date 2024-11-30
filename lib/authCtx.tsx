@@ -1,49 +1,76 @@
-import { useContext, createContext, type PropsWithChildren } from 'react'
-import { useStorageState } from './useStorageState'
-import { router } from 'expo-router'
+import { apiClient } from '@/api/client'
+import React, {
+  PropsWithChildren,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from 'react'
+import { Store } from './store'
 
-const AuthContext = createContext<{
-  signIn: () => void
-  signOut: () => void
-  session?: string | null
+type SessionContextType = {
+  session: { token: string; user: { id: string; name: string } } | null
   isLoading: boolean
-}>({
-  signIn: () => null,
-  signOut: () => null,
-  session: null,
-  isLoading: false,
-})
+  signIn: (username: string, password: string) => Promise<void>
+  signOut: () => Promise<void>
+}
 
-export function useSession() {
-  const value = useContext(AuthContext)
-  if (process.env.NODE_ENV !== 'production') {
-    if (!value) {
-      throw new Error('useSession must be wrapped in a <SessionProvider />')
+const SessionContext = createContext<SessionContextType | undefined>(undefined)
+
+export const SessionProvider = ({ children }: PropsWithChildren) => {
+  const [session, setSession] = useState<SessionContextType['session']>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadSession = async () => {
+      const token = await Store.getItem('jwt_token')
+      const user = await Store.getItem('user_data')
+      if (token && user) {
+        setSession({ token, user: JSON.parse(user) })
+      }
+      setIsLoading(false)
+    }
+    loadSession()
+  }, [])
+
+  const signIn = async (username: string, password: string) => {
+    setIsLoading(true)
+    try {
+      const response = await apiClient.post('/login', {
+        name: username,
+        password,
+      })
+      const { token, user } = response.data
+
+      await Store.setItem('jwt_token', token)
+      await Store.setItem('user_data', JSON.stringify(user))
+
+      setSession({ token, user })
+    } catch (error) {
+      console.error('Login failed:', error)
+      throw new Error('Invalid credentials')
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  return value
-}
-
-export function SessionProvider({ children }: PropsWithChildren) {
-  const [[isLoading, session], setSession] = useStorageState('session')
+  const signOut = async () => {
+    await Store.deleteItem('jwt_token')
+    await Store.deleteItem('user_data')
+    setSession(null)
+  }
 
   return (
-    <AuthContext.Provider
-      value={{
-        signIn: () => {
-          // Perform sign-in logic here
-          setSession('xxx')
-        },
-        signOut: () => {
-          setSession(null)
-          router.replace('/login')
-        },
-        session,
-        isLoading,
-      }}
-    >
+    <SessionContext.Provider value={{ session, isLoading, signIn, signOut }}>
       {children}
-    </AuthContext.Provider>
+    </SessionContext.Provider>
   )
+}
+
+export const useSession = () => {
+  const context = useContext(SessionContext)
+  if (!context) {
+    throw new Error('useSession must be used within a SessionProvider')
+  }
+  return context
 }
